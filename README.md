@@ -34,13 +34,6 @@ cd genomics_core_downloader
 go build ./cmd/gcdl
 ```
 
-`gcdl --version` shows the git tag, or the commit for untagged builds. To set
-the version explicitly:
-
-```sh
-go build -ldflags "-X main.releaseVersion=v1.2.3" ./cmd/gcdl
-```
-
 Run the tests with `go test ./...`.
 
 ## Usage
