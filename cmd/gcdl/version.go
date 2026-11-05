@@ -8,7 +8,7 @@ import (
 
 // releaseVersion can be set at build time:
 //
-//	go build -ldflags "-X main.releaseVersion=v1.2.3"
+//	go build -ldflags "-X main.releaseVersion=v1.2.3" ./cmd/gcdl
 var releaseVersion string
 
 // version returns the release version, else the version Go stamped from git

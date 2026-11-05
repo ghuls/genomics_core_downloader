@@ -1,6 +1,6 @@
-// Command genomics_core_downloader is a terminal UI to log in to the Genomics
-// Core portal (https://pm.genomicscore.be/), list the datasets on the
-// "My Data" page and download the ones that have not expired yet.
+// Command gcdl is a terminal UI to log in to the Genomics Core portal
+// (https://pm.genomicscore.be/), list the datasets on the  "My Data"
+// page and download the ones that have not expired yet.
 package main
 
 import (
