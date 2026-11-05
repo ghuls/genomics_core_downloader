@@ -14,10 +14,18 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/chacha20poly1305"
 )
+
+// MinPassphraseLen is the minimum number of characters of a new passphrase.
+const MinPassphraseLen = 8
+
+// ErrShortPassphrase is returned by Seal for a passphrase shorter than
+// MinPassphraseLen.
+var ErrShortPassphrase = fmt.Errorf("the passphrase must be at least %d characters", MinPassphraseLen)
 
 // ErrWrongPassphrase is returned by Open when the passphrase does not decrypt
 // the file (or the file was modified).
@@ -51,6 +59,9 @@ func Path() (string, error) {
 // Seal encrypts password for user with a key derived from passphrase. The
 // caller remains responsible for wiping password and passphrase.
 func Seal(user string, password, passphrase []byte) (*File, error) {
+	if utf8.RuneCount(passphrase) < MinPassphraseLen {
+		return nil, ErrShortPassphrase
+	}
 	f := &File{Version: version, User: user, KDF: "argon2id", Time: 3, MemoryKiB: 64 * 1024, Threads: 4,
 		Salt: make([]byte, 16), Nonce: make([]byte, chacha20poly1305.NonceSizeX)}
 	if _, err := rand.Read(f.Salt); err != nil {

@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/awnumar/memguard"
 	tea "github.com/charmbracelet/bubbletea"
@@ -200,14 +201,14 @@ func runSavePassword(c *portal.Client, path, user string, saved *credstore.File)
 	if err := c.Login(ctx, user, bytes.Clone(pass)); err != nil { // Login wipes its copy
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "Choose a passphrase to encrypt the saved password (asked each time gcdl starts).")
+	fmt.Fprintf(os.Stderr, "Choose a passphrase of at least %d characters to encrypt the saved password (asked each time gcdl starts).\n", credstore.MinPassphraseLen)
 	phrase, err := promptSecret("Passphrase: ")
 	defer clear(phrase)
 	if err != nil {
 		return err
 	}
-	if len(phrase) == 0 {
-		return errors.New("the passphrase cannot be empty")
+	if utf8.RuneCount(phrase) < credstore.MinPassphraseLen {
+		return credstore.ErrShortPassphrase
 	}
 	again, err := promptSecret("Repeat passphrase: ")
 	defer clear(again)

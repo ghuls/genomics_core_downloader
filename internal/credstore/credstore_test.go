@@ -50,7 +50,7 @@ func TestPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, "credentials.json")
-	f, _ := Seal("someone", []byte("pw"), []byte("phrase"))
+	f, _ := Seal("someone", []byte("pw"), []byte("passphrase"))
 	if err := Save(path, f); err != nil {
 		t.Fatal(err)
 	}
@@ -70,5 +70,17 @@ func TestPermissions(t *testing.T) {
 		if _, err := Load(path); err != nil {
 			t.Errorf("mode %04o: %v", mode, err)
 		}
+	}
+}
+
+func TestShortPassphrase(t *testing.T) {
+	// Characters are counted, not bytes: 7 × "é" is 14 bytes but too short.
+	for _, p := range []string{"", "1234567", "ééééééé"} {
+		if _, err := Seal("someone", []byte("pw"), []byte(p)); !errors.Is(err, ErrShortPassphrase) {
+			t.Errorf("Seal with %q: err = %v", p, err)
+		}
+	}
+	if _, err := Seal("someone", []byte("pw"), []byte("12345678")); err != nil {
+		t.Errorf("Seal with 8 characters: %v", err)
 	}
 }

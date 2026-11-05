@@ -158,7 +158,7 @@ func TestViews(t *testing.T) {
 }
 
 func TestSavedPasswordLogin(t *testing.T) {
-	saved, err := credstore.Seal("someone", []byte("secret"), []byte("phrase"))
+	saved, err := credstore.Seal("someone", []byte("secret"), []byte("passphrase"))
 	if err != nil {
 		t.Fatal(err)
 	}
