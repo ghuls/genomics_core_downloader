@@ -44,10 +44,10 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println("gcdl", version())
+		fmt.Println("gcdl", getVersion())
 		return
 	}
-	portal.UserAgent = "GenomicCoreDownloader/" + version().String()
+	portal.UserAgent = "GenomicCoreDownloader/" + getVersion().String()
 
 	profile, err := colorProfile(*colorMode)
 	if err != nil {

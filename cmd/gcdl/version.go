@@ -6,17 +6,17 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
-// releaseVersion can be set at build time:
+// version can be set at build time:
 //
-//	go build -ldflags "-X main.releaseVersion=v1.2.3" ./cmd/gcdl
-var releaseVersion string
+//	go build -ldflags "-X main.version=v1.2.3" ./cmd/gcdl
+var version string
 
-// version returns the release version, else the version Go stamped from git
+// getVersion returns the release version, else the version Go stamped from git
 // (the tag, or a pseudo-version with the commit hash), else 0.0.0+dev.
-func version() *semver.Version {
+func getVersion() *semver.Version {
 	// If version was passed as ld flag, use that.
-	if releaseVersion != "" {
-		if parsed, err := semver.NewVersion(releaseVersion); err == nil {
+	if version != "" {
+		if parsed, err := semver.NewVersion(version); err == nil {
 			return parsed
 		}
 	}
