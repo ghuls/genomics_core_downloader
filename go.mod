@@ -3,6 +3,7 @@ module github.com/ghuls/genomics_core_downloader
 go 1.27.3
 
 require (
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/awnumar/memguard v0.23.0
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/awnumar/memcall v0.4.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
