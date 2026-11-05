@@ -9,15 +9,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/awnumar/memguard"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
 	flag "github.com/spf13/pflag"
 	"golang.org/x/term"
 
@@ -232,63 +229,4 @@ func runSavePassword(c *portal.Client, path, user string, saved *credstore.File)
 	}
 	fmt.Fprintln(os.Stderr, "password saved encrypted in", path)
 	return nil
-}
-
-// printTable prints the datasets like the Datasets table of the TUI (plus an
-// MD5 column): same columns, alignment and colours (plain text when not
-// writing to a terminal). On a terminal the table is drawn in a panel no wider than the window.
-func printTable(w io.Writer, ds []portal.Dataset) {
-	fit := tableColumns(ds, 1<<16) // measure the widest names
-	need := 0
-	for _, c := range fit[1:] {
-		need += c.width + 1
-	}
-	name := 0
-	for _, d := range ds {
-		name = max(name, ansi.StringWidth(d.DisplayName()))
-	}
-	need += name - fit[2].width
-	md5 := len("MD5")
-	for _, d := range ds {
-		md5 = max(md5, len(d.MD5))
-	}
-	need += md5 + 1
-	termWidth, _, err := term.GetSize(int(os.Stdout.Fd()))
-	isTerm := err == nil && termWidth > 0
-	if isTerm {
-		need = min(need, termWidth-4)
-	}
-	// No cursor/selection mark; the MD5 column follows Dataset.
-	cols := tableColumns(ds, need-md5-1+fit[0].width+1)[1:]
-	cols = append(cols[:2], append([]column{{"MD5", md5, false}}, cols[2:]...)...)
-
-	titles := make([]string, len(cols))
-	for i, c := range cols {
-		titles[i] = c.title
-	}
-	lines := []string{renderRow(cols, titles, headerStyle, headerStyle)}
-	avail := 0
-	for _, d := range ds {
-		st, base := "available", lipgloss.NewStyle()
-		if d.Downloadable() {
-			avail++
-		} else {
-			st, base = "expired", expiredStyle
-		}
-		lines = append(lines, renderRow(cols,
-			[]string{d.Project, d.DisplayName(), d.MD5, d.Expires, d.FileCount, d.TotalSize, d.RequestedBy, st},
-			base, base.Foreground(statusColor(st))))
-	}
-	if !isTerm {
-		for _, l := range lines {
-			fmt.Fprintln(w, strings.TrimRight(l, " "))
-		}
-		return
-	}
-	title := panelTitle.Render("Datasets") + helpStyle.Render(fmt.Sprintf("  %d datasets · %d downloadable", len(ds), avail))
-	width := 0
-	for _, c := range cols {
-		width += c.width + 1
-	}
-	fmt.Fprintln(w, panel(title, strings.Join(lines, "\n"), width+3, len(lines), false))
 }
