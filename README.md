@@ -18,7 +18,7 @@ of your choice (Linux and macOS only).
 
 ## Screencast
 
-[![asciicast](https://asciinema.org/a/1271340.svg)](https://asciinema.org/a/1271340)
+[![asciicast](./assets/img/gcdl-demo.svg)](https://asciinema.org/a/1271340)
 
 ## Building
 
