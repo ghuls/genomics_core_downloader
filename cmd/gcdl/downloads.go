@@ -9,6 +9,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/muesli/termenv"
 
 	"github.com/ghuls/genomics_core_downloader/internal/download"
 	"github.com/ghuls/genomics_core_downloader/internal/portal"
@@ -280,13 +282,9 @@ func (m model) downloadsPanel(width int, l layout) string {
 		body = append(body, helpStyle.Render(fmt.Sprintf(
 			"No downloads yet — select datasets with space and press d (up to %d run in parallel, --jobs).", m.parallel)))
 	}
-	// Columns: mark, name, then either a progress block or a status text.
-	barW := max(10, min(30, inner/5))
-	const pctW, bytesW, speedW, etaW = 4, 21, 12, 12
-	progW := barW + 1 + pctW + 1 + bytesW + 1 + speedW + 1 + etaW
+	// Columns: mark, name, then either a progress bar or a status text.
+	progW := min(barWidth, inner-2-1-20)
 	nameW := max(20, inner-2-1-progW)
-	pb := m.progress
-	pb.Width = barW
 	for i := m.dlOffset; i < min(len(m.jobs), m.dlOffset+l.dlLines); i++ {
 		j := m.jobs[i]
 		mark := "  "
@@ -299,18 +297,23 @@ func (m model) downloadsPanel(width int, l layout) string {
 		switch {
 		case j.state == jobRunning:
 			frac := ratio(j.prog.Done, j.prog.Total)
-			sp, eta := "", ""
+			pct := fmt.Sprintf("%.0f%%", 100*frac)
+			info := []string{humanBytes(j.prog.Done) + " / " + humanBytes(j.prog.Total)}
 			if j.prog.Phase == download.PhaseHashingPartial {
-				sp = "verifying"
+				pct = "verifying " + pct
 			} else if j.speed > 0 {
-				sp = humanBytes(int64(j.speed)) + "/s"
+				info = append(info, humanBytes(int64(j.speed))+"/s")
 				if j.prog.Total > 0 {
-					eta = "ETA " + (time.Duration(float64(j.prog.Total-j.prog.Done)/j.speed) * time.Second).Round(time.Second).String()
+					info = append(info, "ETA "+(time.Duration(float64(j.prog.Total-j.prog.Done)/j.speed)*time.Second).Round(time.Second).String())
 				}
 			}
-			right = pb.ViewAs(frac) + " " + cellRight(fmt.Sprintf("%.0f%%", 100*frac), pctW) + " " +
-				cellRight(humanBytes(j.prog.Done)+" / "+humanBytes(j.prog.Total), bytesW) + " " +
-				cellRight(sp, speedW) + " " + cellRight(eta, etaW)
+			if lipgloss.ColorProfile() == termenv.Ascii { // no colours to draw the bar behind the text
+				pb := m.progress
+				pb.Width = max(10, progW-2-ansi.StringWidth(pct)-ansi.StringWidth(strings.Join(info, " · ")))
+				right = pb.ViewAs(frac) + " " + pct + " " + strings.Join(info, " · ")
+			} else {
+				right = textBar(frac, progW, pct, info)
+			}
 		case j.state == jobStarting:
 			right = m.spinner.View() + color.Render(" requesting download link…")
 		case j.state == jobQueued:
@@ -336,4 +339,48 @@ func (m model) downloadsPanel(width int, l layout) string {
 		title += helpStyle.Render(fmt.Sprintf(" · %d–%d of %d", m.dlOffset+1, min(n, m.dlOffset+l.dlLines), n))
 	}
 	return panel(title, strings.Join(body, "\n"), width, l.dlLines, m.focus == focusDownloads)
+}
+
+// Colours of the progress bar: the done part fades from the logo cyan to the
+// navy, the rest is dark grey.
+var (
+	barDone = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Bold(true)
+	barTodo = lipgloss.NewStyle().Background(lipgloss.Color("237")).Foreground(lipgloss.Color("252"))
+)
+
+// barWidth fits the widest text a progress bar shows (sizes go up to
+// 1023.9 of a unit); the rest of the row is for the file name.
+var barWidth = ansi.StringWidth(" 100%  " + "1023.9 GiB / 1023.9 GiB · 1023.9 MiB/s · ETA 99h59m59s" + " ")
+
+// textBar draws a progress bar of width cells with left at the start and the
+// info parts (as many as fit) at the end, written inside the bar.
+func textBar(frac float64, width int, left string, info []string) string {
+	right := ""
+	for n := len(info); n > 0; n-- {
+		if r := strings.Join(info[:n], " · "); len(left)+len(r)+4 <= width {
+			right = r
+			break
+		}
+	}
+	text := []rune(" " + left + strings.Repeat(" ", max(1, width-ansi.StringWidth(left)-ansi.StringWidth(right)-2)) + right + " ")
+	done := int(frac*float64(width) + 0.5)
+	var b strings.Builder
+	for i, r := range text[:width] {
+		if i < done {
+			b.WriteString(barDone.Background(blend(logoCyan, logoNavy, float64(i)/float64(max(1, width-1)))).Render(string(r)))
+		} else {
+			b.WriteString(barTodo.Render(string(text[i:width])))
+			break
+		}
+	}
+	return b.String()
+}
+
+// blend mixes two "#rrggbb" colours: t = 0 gives a, t = 1 gives b.
+func blend(a, b lipgloss.Color, t float64) lipgloss.Color {
+	var ar, ag, ab, br, bg, bb int
+	fmt.Sscanf(string(a), "#%02x%02x%02x", &ar, &ag, &ab)
+	fmt.Sscanf(string(b), "#%02x%02x%02x", &br, &bg, &bb)
+	mix := func(x, y int) int { return x + int(t*float64(y-x)+0.5) }
+	return lipgloss.Color(fmt.Sprintf("#%02x%02x%02x", mix(ar, br), mix(ag, bg), mix(ab, bb)))
 }
