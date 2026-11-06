@@ -397,7 +397,7 @@ func (m model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m model) updateActivity(key string) (tea.Model, tea.Cmd) {
 	l := m.layout()
-	page := max(1, l.bottomLines-1)
+	page := max(1, l.actLines-1)
 	switch key {
 	case "up", "k":
 		m.actOffset--
@@ -412,7 +412,7 @@ func (m model) updateActivity(key string) (tea.Model, tea.Cmd) {
 	case "end", "G":
 		m.actOffset = len(m.messages)
 	}
-	maxOff := max(0, len(m.messages)-l.bottomLines)
+	maxOff := max(0, len(m.messages)-l.actLines)
 	m.actOffset = max(0, min(m.actOffset, maxOff))
 	m.actFollow = m.actOffset == maxOff
 	return m, nil
@@ -425,7 +425,7 @@ func (m *model) logf(format string, args ...any) {
 		m.actOffset = max(0, m.actOffset-1)
 	}
 	if m.actFollow {
-		m.actOffset = max(0, len(m.messages)-m.layout().bottomLines)
+		m.actOffset = max(0, len(m.messages)-m.layout().actLines)
 	}
 }
 
@@ -444,7 +444,7 @@ func (m *model) clampAll() {
 	l := m.layout()
 	m.cursor, m.offset = scrollInto(m.cursor, m.offset, len(m.visible), l.rows)
 	m.dlCursor, m.dlOffset = scrollInto(m.dlCursor, m.dlOffset, len(m.jobs), l.dlLines)
-	maxOff := max(0, len(m.messages)-l.bottomLines)
+	maxOff := max(0, len(m.messages)-l.actLines)
 	if m.actFollow {
 		m.actOffset = maxOff
 	}
@@ -456,17 +456,24 @@ func (m *model) clampAll() {
 //	header                       1
 //	Datasets panel               rows + 4 (borders, filter line, column header)
 //	Downloads panel              dlLines + 2
-//	Details | Activity panels    bottomLines + 2 (only if there is room)
+//	Details panel                detailLines + 2 (only if there is room,
+//	Activity panel               actLines + 2     together with Details)
 //	key help                     3 (more when groups wrap)
 type layout struct {
-	rows        int
-	dlLines     int
-	bottomLines int
-	showBottom  bool
+	rows       int
+	dlLines    int
+	actLines   int
+	showBottom bool
 }
 
+// detailLines is the height of the Details panel contents.
+const detailLines = 5
+
 func (m model) layout() layout {
-	l := layout{bottomLines: 5}
+	l := layout{actLines: 3}
+	if m.height >= 54 {
+		l.actLines = 5
+	}
 	switch {
 	case m.height >= 44:
 		l.dlLines = 8
@@ -476,9 +483,9 @@ func (m model) layout() layout {
 		l.dlLines = 3
 	}
 	rest := m.height - 1 - len(m.keyHelp(max(60, m.width))) - (l.dlLines + 2) - 4
-	if rest-(l.bottomLines+2) >= 5 {
+	if bottom := detailLines + 2 + l.actLines + 2; rest-bottom >= 5 {
 		l.showBottom = true
-		rest -= l.bottomLines + 2
+		rest -= bottom
 	}
 	l.rows = max(3, rest)
 	return l
@@ -516,10 +523,8 @@ func (m model) viewList() string {
 	out = append(out, m.datasetsPanel(width, l))
 	out = append(out, m.downloadsPanel(width, l))
 	if l.showBottom {
-		lw := width * 2 / 5
-		out = append(out, lipgloss.JoinHorizontal(lipgloss.Top,
-			panel(panelTitle.Render("Details"), m.detailsBody(), lw, l.bottomLines, false),
-			m.activityPanel(width-lw, l)))
+		out = append(out, panel(panelTitle.Render("Details"), m.detailsBody(), width, detailLines, false))
+		out = append(out, m.activityPanel(width, l))
 	}
 
 	out = append(out, m.keyHelp(width)...)
@@ -533,19 +538,19 @@ func (m model) activityPanel(width int, l layout) string {
 	}
 	start := m.actOffset
 	if m.focus != focusActivity || m.actFollow {
-		start = max(0, len(m.messages)-l.bottomLines)
+		start = max(0, len(m.messages)-l.actLines)
 	}
-	for i := start; i < min(len(m.messages), start+l.bottomLines); i++ {
+	for i := start; i < min(len(m.messages), start+l.actLines); i++ {
 		lines = append(lines, m.messages[i])
 	}
 	if len(m.messages) == 0 && m.err == "" {
 		lines = append(lines, helpStyle.Render("nothing yet"))
 	}
 	title := panelTitle.Render("Activity")
-	if n := len(m.messages); n > l.bottomLines {
-		title += helpStyle.Render(fmt.Sprintf("  %d–%d of %d", start+1, min(n, start+l.bottomLines), n))
+	if n := len(m.messages); n > 0 {
+		title += helpStyle.Render(fmt.Sprintf("  %d–%d of %d", start+1, min(n, start+l.actLines), n))
 	}
-	return panel(title, strings.Join(lines, "\n"), width, l.bottomLines, m.focus == focusActivity)
+	return panel(title, strings.Join(lines, "\n"), width, l.actLines, m.focus == focusActivity)
 }
 
 func (m model) detailsBody() string {
