@@ -16,6 +16,10 @@ Service** and downloads the ones you select:
 The password can optionally be saved in a file, encrypted with a passphrase
 of your choice (Linux and macOS only).
 
+## Screencast
+
+[![asciicast](https://asciinema.org/a/1271340.svg)](https://asciinema.org/a/1271340)
+
 ## Building
 
 Requires Go 1.27 or newer.
